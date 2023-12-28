@@ -1,0 +1,123 @@
+{% set name = "lammps-library" %}
+{% set version = "20230802.2" %}
+{% set lammps = "stable_2Aug2023_update2" %}
+{% set lammps_sha256 = "3bcecabc9cad08d0a4e4d989b52d29c58505f7ead8ebacf43c9db8d9fd3d564a" %}
+
+package:
+  name: {{ name|lower }}
+  version: {{ version }}
+
+source:
+  url: https://github.com/lammps/lammps/archive/{{ lammps }}.tar.gz
+  sha256: {{ lammps_sha256 }}
+
+build:
+  number: 0
+  string: h{{ PKG_HASH }}_{{ mpi }}_{{ PKG_BUILDNUM }}
+  skip: True  # [not linux]
+  skip: True  # [ppc64le]
+
+requirements:
+  build:
+    - python >=3                             # [build_platform != target_platform]
+    - cross-python_{{ target_platform }} >=3 # [build_platform != target_platform]
+    - {{ compiler('c') }}
+    - {{ compiler('cxx') }}
+    - sysroot_linux-64 2.17  # [linux]
+    - cmake
+    - make
+  
+  host:
+    - python >=3
+    - pip
+    - setuptools
+    - numpy
+    - plumed >=2.4,<2.9
+    - {{ mpi }}
+    - zlib
+    - fftw
+    - libpng
+    - jpeg
+    - hdf5
+
+outputs:
+  - name: pylammps
+    build:
+      noarch: python
+    files:
+      - lib/python*/site-packages/lammps/*
+      - lib/python*/site-packages/lammps/*/*
+      - lib/python*/site-packages/lammps*
+    requirements:
+      build:
+        - python >=3                             # [build_platform != target_platform]
+        - cross-python_{{ target_platform }} >=3 # [build_platform != target_platform]
+      host:
+        - python >=3
+        - {{ mpi }}
+        - mpi4py
+        - numpy
+      run:
+        - python >=3
+        - {{ mpi }}
+        - mpi4py
+        - numpy
+    test:
+      imports:
+        - lammps
+
+  - name: lammps-precxx11
+    requirements:
+      build:
+        - {{ compiler('c') }}
+        - {{ compiler('cxx') }}
+      host:
+        - plumed >=2.4,<2.9
+        - {{ mpi }}
+        - mpi4py
+        - zlib
+        - fftw
+        - libpng
+        - jpeg
+        - hdf5
+      run:
+        - {{ mpi }}
+        - plumed >=2.4,<2.9
+        - fftw
+        - libpng
+        - jpeg
+        - {{ pin_subpackage('pylammps', exact=True) }}
+    files:
+      - bin/lmp
+      - bin/_lmp
+      - lib/liblammps.so*
+      - lib/pkgconfig/liblammps.pc
+      - lib/cmake/LAMMPS
+      - include/lammps
+      - share/lammps
+      - share/man/man1/lmp*
+      - etc/profile.d/lammps.sh
+      - etc/profile.d/lammps.csh
+    test:
+      commands:
+        - lmp -help
+        - test -f $PREFIX/lib/liblammps.so
+      imports:
+        - lammps
+
+about:
+  home: http://lammps.sandia.gov
+  license: GPL-2.0
+  license_family: GPL
+  license_file: LICENSE
+  summary: 'LAMMPS stands for Large-scale Atomic/Molecular Massively Parallel Simulator.'
+
+  description: |
+    LAMMPS is a classical molecular dynamics simulation code designed to
+    run efficiently on parallel computers.  It was developed at Sandia
+    National Laboratories, a US Department of Energy facility, with
+    funding from the DOE.  It is an open-source code, distributed freely
+    under the terms of the GNU Public License (GPL).
+    This package is modified to force use Pre-CXX11 ABI.
+  doc_url: http://lammps.sandia.gov/doc/Manual.html
+  dev_url: https://github.com/lammps/lammps
